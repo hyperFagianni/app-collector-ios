@@ -2,6 +2,8 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -64,20 +66,29 @@ export default function DecksScreen() {
                   {section.format}
                 </ThemedText>
                 {section.data.map((deck) => (
-                  <Pressable
+                  <ReanimatedSwipeable
                     key={deck.id}
-                    style={[styles.row, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}
-                    onPress={() => router.push(`/deck/${deck.id}`)}
-                    onLongPress={() => confirmDelete(deck)}
+                    friction={2}
+                    rightThreshold={40}
+                    overshootRight={false}
+                    containerStyle={styles.swipeContainer}
+                    renderRightActions={(progress) => (
+                      <DeleteAction progress={progress} onPress={() => confirmDelete(deck)} />
+                    )}
                   >
-                    <Image source={{ uri: deck.imageUrl }} style={styles.thumb} contentFit="cover" />
-                    <View style={styles.rowText}>
-                      <ThemedText type="title">{deck.title}</ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {deck.main.length + deck.extra.length + deck.side.length} carte diverse
-                      </ThemedText>
-                    </View>
-                  </Pressable>
+                    <Pressable
+                      style={[styles.row, { backgroundColor: colors.backgroundElement, borderColor: colors.border }]}
+                      onPress={() => router.push(`/deck/${deck.id}`)}
+                    >
+                      <Image source={{ uri: deck.imageUrl }} style={styles.thumb} contentFit="cover" />
+                      <View style={styles.rowText}>
+                        <ThemedText type="title">{deck.title}</ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {deck.main.length + deck.extra.length + deck.side.length} carte diverse
+                        </ThemedText>
+                      </View>
+                    </Pressable>
+                  </ReanimatedSwipeable>
                 ))}
               </View>
             ))}
@@ -97,8 +108,25 @@ export default function DecksScreen() {
   );
 }
 
+function DeleteAction({ progress, onPress }: { progress: SharedValue<number>; onPress: () => void }) {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: Math.min(progress.value, 1) }],
+  }));
+
+  return (
+    <Animated.View style={[styles.deleteAction, animatedStyle]}>
+      <Pressable style={styles.deleteActionButton} onPress={onPress}>
+        <ThemedText type="small" themeColor="background">
+          Elimina
+        </ThemedText>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  swipeContainer: { marginBottom: Spacing.three, borderRadius: 12 },
   header: { paddingHorizontal: Spacing.four, paddingTop: Spacing.two, paddingBottom: Spacing.three },
   list: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.six * 2 },
   sectionHeader: { paddingTop: Spacing.three, paddingBottom: Spacing.two },
@@ -109,7 +137,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     padding: Spacing.three,
-    marginBottom: Spacing.three,
+  },
+  deleteAction: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  deleteActionButton: {
+    backgroundColor: BRAND_RED,
+    height: '100%',
+    minWidth: 88,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
   },
   thumb: { width: 64, height: 64, borderRadius: 8 },
   rowText: { flex: 1, gap: Spacing.half },
